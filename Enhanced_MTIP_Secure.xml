@@ -1,0 +1,581 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>clock clockTime;
+clock authClock;   // Clock for timeout during authentication
+const int TIMELIMIT  = 4;  
+const int DEADLINE = 3; 
+const int num_subs = 2;
+
+//int Total_sublinks=2;
+
+broadcast chan Sync;
+broadcast chan Send_To_Sub[num_subs];
+broadcast chan Send_To_Recv[num_subs];
+broadcast chan Reset;
+broadcast chan EmptyLink;
+
+int sndData1=0;
+int sndData;    // From Source to Sublink
+int sndTime=0;    // From Source to Sublink
+int S_AuthKey;   // From Source to Sublink
+int sub_Data;     // From Sublink to Destination
+int sub_Time;     // From Sublink to Destination
+int sub_AuthKey;   // From Sublink to Destination
+
+int full[num_subs]={0,0};
+int sub_use[num_subs]={0,0};           //when sub_use==1 we can use the sublink
+int flag=0;       //If receiver ready or not
+
+
+int PSK = 1000; // Pre-shared key used for authentication
+
+broadcast chan Auth_Request;  // Channel for authentication request
+broadcast chan Auth_Response; // Channel for authentication response
+
+bool isAuthenticated = false; // Indicates if authentication is successful
+
+
+
+
+</declaration>
+	<template>
+		<name x="5" y="5">Sender</name>
+		<declaration>// Iterators and similar
+int sub_index=0;
+int authKey = 1000; // Pre-shared key for authentication
+
+int count=0;
+
+// Methods
+int Full_subs(){
+    return full[0]!=0 || full[1]!=0;
+}
+
+// Key for encryption (pre-shared key)
+int encryption_key = 10;
+
+// Encrypt function: Takes an integer input and returns an encrypted integer
+int encrypt_data(int Data, int Time) {
+    // XOR the data with the key and timestamp to produce encrypted output
+    return Data ^ encryption_key ^ Time;
+}
+
+
+</declaration>
+		<location id="id0" x="-595" y="-178">
+			<name x="-612" y="-212">Initial</name>
+		</location>
+		<location id="id1" x="-110" y="-178">
+			<name x="-221" y="-204">ReadyToSend</name>
+		</location>
+		<location id="id2" x="-323" y="-8">
+			<name x="-306" y="-34">Sending</name>
+			<committed/>
+		</location>
+		<location id="id3" x="153" y="-178">
+			<name x="119" y="-221">ResetWait</name>
+		</location>
+		<location id="id4" x="-102" y="221">
+			<name x="-136" y="187">toSublinks</name>
+			<committed/>
+		</location>
+		<location id="id5" x="-110" y="-331">
+			<name x="-120" y="-365">Authenticating</name>
+			<label kind="invariant" x="-161" y="-382">authClock&lt;=4</label>
+		</location>
+		<location id="id6" x="-323" y="153">
+			<committed/>
+		</location>
+		<branchpoint id="id7" x="-323" y="51"/>
+		<init ref="id0"/>
+		<transition id="id8">
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="assignment" x="-476" y="68">sndData1=2</label>
+			<label kind="probability" x="-425" y="34">25</label>
+			<nail x="-433" y="51"/>
+			<nail x="-433" y="153"/>
+		</transition>
+		<transition id="id9">
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="assignment" x="-255" y="68">sndData1=4</label>
+			<label kind="probability" x="-221" y="34">25</label>
+			<nail x="-221" y="51"/>
+			<nail x="-221" y="153"/>
+		</transition>
+		<transition id="id10">
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="assignment" x="-365" y="68">sndData1=3</label>
+			<label kind="probability" x="-314" y="34">25</label>
+			<nail x="-323" y="110"/>
+		</transition>
+		<transition id="id11">
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="assignment" x="-629" y="68">sndData1=1</label>
+			<label kind="probability" x="-527" y="34">25</label>
+			<nail x="-518" y="51"/>
+			<nail x="-518" y="153"/>
+		</transition>
+		<transition id="id12" controllable="false">
+			<source ref="id2"/>
+			<target ref="id7"/>
+		</transition>
+		<transition id="id13">
+			<source ref="id6"/>
+			<target ref="id4"/>
+			<label kind="assignment" x="-501" y="212">sndData=encrypt_data(sndData1,sndTime), 
+S_AuthKey=authKey,
+count=(count+1)%2</label>
+			<nail x="-323" y="170"/>
+		</transition>
+		<transition id="id14">
+			<source ref="id5"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-518" y="-357">authClock&gt;=4 &amp;&amp; !isAuthenticated</label>
+			<label kind="assignment" x="-544" y="-331">authClock=0, count=0</label>
+			<nail x="-442" y="-331"/>
+		</transition>
+		<transition id="id15">
+			<source ref="id5"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-68" y="-314">Auth_Response?</label>
+			<label kind="assignment" x="-51" y="-297">isAuthenticated=true,
+count=(count+1)%2</label>
+			<nail x="-68" y="-272"/>
+			<nail x="-59" y="-255"/>
+		</transition>
+		<transition id="id16">
+			<source ref="id1"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-289" y="-314">!isAuthenticated 
+&amp;&amp; count&gt;=1</label>
+			<label kind="synchronisation" x="-280" y="-280">Auth_Request!</label>
+			<label kind="assignment" x="-280" y="-263">authClock=0</label>
+			<nail x="-170" y="-255"/>
+		</transition>
+		<transition id="id17">
+			<source ref="id4"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-68" y="221">sub_index&lt;num_subs &amp;&amp; 
+sub_use[sub_index]==1</label>
+			<label kind="synchronisation" x="-59" y="263">Send_To_Sub[sub_index]!</label>
+			<label kind="assignment" x="-34" y="280">sub_index++</label>
+			<nail x="-127" y="280"/>
+			<nail x="-77" y="280"/>
+		</transition>
+		<transition id="id18">
+			<source ref="id3"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="178" y="-127">Reset?</label>
+			<nail x="255" y="-178"/>
+			<nail x="255" y="-110"/>
+			<nail x="25" y="-110"/>
+		</transition>
+		<transition id="id19">
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-93" y="-221">clockTime&gt;=TIMELIMIT 
+&amp;&amp; sndTime+1&gt;TIMELIMIT</label>
+			<label kind="comments" x="212" y="-229">clocktime and sendtime 
+are updated together</label>
+			<nail x="0" y="-178"/>
+			<nail x="34" y="-178"/>
+			<nail x="85" y="-178"/>
+		</transition>
+		<transition id="id20">
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-357" y="-153">!Full_subs() &amp;&amp; 
+clockTime &gt;=sndTime &amp;&amp;
+sndTime+1&lt;=TIMELIMIT &amp;&amp;
+ (count!=1 || isAuthenticated==true)</label>
+			<label kind="comments" x="-714" y="-127">Packet sent when the time has
+reached or surpassed its designated
+sndTime(timestamp).Avoid early 
+transmission(periodic transmission
+in MTIP)</label>
+			<nail x="-110" y="-59"/>
+			<nail x="-323" y="-59"/>
+		</transition>
+		<transition id="id21">
+			<source ref="id4"/>
+			<target ref="id1"/>
+			<label kind="guard" x="110" y="-8">sub_index==num_subs</label>
+			<label kind="assignment" x="110" y="17">sub_index=0, sndTime++</label>
+			<nail x="68" y="178"/>
+			<nail x="102" y="170"/>
+			<nail x="102" y="93"/>
+			<nail x="102" y="-59"/>
+			<nail x="-110" y="-59"/>
+		</transition>
+		<transition id="id22">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-450" y="-212">Sync!</label>
+			<label kind="assignment" x="-544" y="-195">clockTime=0, sndTime=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Sublink</name>
+		<parameter>int id</parameter>
+		<declaration>//To record integer value and time of packet from sender.
+int subVal=0;
+int subTime;
+int subAuthKey; // Stores received key for forwarding
+</declaration>
+		<location id="id23" x="-646" y="-161">
+			<name x="-663" y="-195">Initial</name>
+		</location>
+		<location id="id24" x="-221" y="-161">
+			<name x="-280" y="-195">Free</name>
+		</location>
+		<location id="id25" x="153" y="-161">
+			<name x="136" y="-195">Busy</name>
+		</location>
+		<location id="id26" x="144" y="187">
+			<name x="102" y="153">PacketSent</name>
+			<committed/>
+		</location>
+		<location id="id27" x="467" y="-161">
+			<name x="374" y="-204">EmptyReset</name>
+			<committed/>
+		</location>
+		<branchpoint id="id28" x="153" y="85"/>
+		<init ref="id23"/>
+		<transition id="id29">
+			<source ref="id27"/>
+			<target ref="id24"/>
+			<label kind="assignment" x="-144" y="-331">full[id]=0, 
+sub_use[id]=1</label>
+			<nail x="467" y="-340"/>
+			<nail x="-221" y="-340"/>
+		</transition>
+		<transition id="id30">
+			<source ref="id25"/>
+			<target ref="id27"/>
+			<label kind="synchronisation" x="280" y="-161">EmptyLink?</label>
+			<nail x="195" y="-161"/>
+			<nail x="238" y="-161"/>
+			<nail x="289" y="-161"/>
+			<nail x="374" y="-161"/>
+		</transition>
+		<transition id="id31">
+			<source ref="id28"/>
+			<target ref="id26"/>
+			<label kind="synchronisation" x="263" y="110">Send_To_Recv[id]!</label>
+			<label kind="assignment" x="263" y="127">sub_Data=0,
+sub_Time=subTime,
+sub_AuthKey=subAuthKey</label>
+			<label kind="comments" x="272" y="59">simulate lost</label>
+			<label kind="probability" x="263" y="93">50</label>
+			<nail x="255" y="85"/>
+			<nail x="255" y="187"/>
+		</transition>
+		<transition id="id32">
+			<source ref="id28"/>
+			<target ref="id26"/>
+			<label kind="synchronisation" x="-153" y="119">Send_To_Recv[id]!</label>
+			<label kind="assignment" x="-153" y="136">sub_Data=subVal,
+sub_Time=subTime,
+sub_AuthKey=subAuthKey</label>
+			<label kind="probability" x="-153" y="102">50</label>
+			<nail x="51" y="85"/>
+			<nail x="51" y="187"/>
+		</transition>
+		<transition id="id33">
+			<source ref="id25"/>
+			<target ref="id28"/>
+			<label kind="guard" x="153" y="-34">flag==1</label>
+			<label kind="assignment" x="153" y="-8">sub_use[id]=0</label>
+			<label kind="comments" x="-76" y="-34">forward data to receiver</label>
+			<nail x="153" y="25"/>
+		</transition>
+		<transition id="id34">
+			<source ref="id26"/>
+			<target ref="id27"/>
+			<nail x="144" y="255"/>
+			<nail x="467" y="255"/>
+		</transition>
+		<transition id="id35">
+			<source ref="id24"/>
+			<target ref="id25"/>
+			<label kind="synchronisation" x="-136" y="-187">Send_To_Sub[id]?</label>
+			<label kind="assignment" x="-136" y="-161">subVal=sndData,
+subTime=sndTime,
+subAuthKey=S_AuthKey</label>
+			<label kind="comments" x="-153" y="-212">receive data from sender</label>
+		</transition>
+		<transition id="id36">
+			<source ref="id23"/>
+			<target ref="id24"/>
+			<label kind="synchronisation" x="-544" y="-187">Sync?</label>
+			<label kind="assignment" x="-603" y="-153">full[id]=subVal, 
+sub_use[id]=1</label>
+		</transition>
+	</template>
+	<template>
+		<name>Receiver</name>
+		<declaration>// Reception variables
+int rcvTime;
+int rcvData;
+int rcvAuthKey;     // Stores received key for validation
+int count=0;
+
+// Key for encryption (pre-shared key)
+int decryption_key = 10;
+
+// Decrypt function: Takes an encrypted integer and returns the original data
+int decrypt_data(int Data, int Time) {
+    // XOR again with the same key and timestamp to retrieve original data
+    return Data ^ decryption_key ^ Time;
+}
+</declaration>
+		<location id="id37" x="-314" y="-229">
+			<name x="-331" y="-263">Initial</name>
+		</location>
+		<location id="id38" x="-313" y="-68">
+			<name x="-442" y="-51">ReadyToReceive</name>
+		</location>
+		<location id="id39" x="34" y="-34">
+			<name x="59" y="-59">Received</name>
+			<committed/>
+		</location>
+		<location id="id40" x="-586" y="-68">
+			<name x="-697" y="-76">ResetClock</name>
+			<committed/>
+		</location>
+		<location id="id41" x="34" y="281">
+			<name x="42" y="289">Proceed</name>
+			<committed/>
+		</location>
+		<location id="id42" x="-586" y="51">
+			<name x="-688" y="51">Iterating</name>
+			<committed/>
+		</location>
+		<location id="id43" x="323" y="170">
+			<name x="238" y="187">Late_Loss_Packet</name>
+			<committed/>
+		</location>
+		<location id="id44" x="34" y="162">
+			<name x="51" y="153">Valid_Packet</name>
+			<committed/>
+		</location>
+		<location id="id45" x="76" y="-204">
+			<name x="66" y="-238">Authenticating_rec</name>
+			<committed/>
+		</location>
+		<location id="id46" x="-59" y="-68">
+			<name x="-85" y="-59">Wait_Auth</name>
+		</location>
+		<location id="id47" x="510" y="170">
+			<name x="468" y="187">Tampered_Packet</name>
+			<committed/>
+		</location>
+		<init ref="id37"/>
+		<transition id="id48">
+			<source ref="id47"/>
+			<target ref="id41"/>
+			<nail x="510" y="280"/>
+		</transition>
+		<transition id="id49">
+			<source ref="id39"/>
+			<target ref="id47"/>
+			<label kind="guard" x="433" y="-85">sndData1!=rcvData 
+|| !isAuthenticated</label>
+			<nail x="510" y="-34"/>
+		</transition>
+		<transition id="id50">
+			<source ref="id45"/>
+			<target ref="id46"/>
+			<label kind="guard" x="-17" y="-178">rcvAuthKey == PSK</label>
+			<label kind="synchronisation" x="25" y="-161">Auth_Response!</label>
+			<nail x="76" y="-144"/>
+		</transition>
+		<transition id="id51">
+			<source ref="id46"/>
+			<target ref="id45"/>
+			<label kind="guard" x="-161" y="-246">!isAuthenticated</label>
+			<label kind="synchronisation" x="-93" y="-229">Auth_Request?</label>
+			<label kind="assignment" x="-119" y="-204">count=(count+1)%2</label>
+			<nail x="-59" y="-204"/>
+		</transition>
+		<transition id="id52">
+			<source ref="id46"/>
+			<target ref="id39"/>
+			<label kind="guard" x="-17" y="-93">count&gt;=1 || isAuthenticated</label>
+			<nail x="34" y="-68"/>
+		</transition>
+		<transition id="id53">
+			<source ref="id38"/>
+			<target ref="id46"/>
+			<label kind="select" x="-289" y="-102">id : int [0,num_subs-1]</label>
+			<label kind="synchronisation" x="-263" y="-119">Send_To_Recv[id]?</label>
+			<label kind="assignment" x="-272" y="-59">rcvTime=sub_Time, 
+rcvData=decrypt_data
+(sub_Data,sub_Time),
+rcvAuthKey=sub_AuthKey,
+flag=0</label>
+		</transition>
+		<transition id="id54">
+			<source ref="id40"/>
+			<target ref="id42"/>
+			<label kind="synchronisation" x="-680" y="-8">EmptyLink!</label>
+			<nail x="-586" y="-17"/>
+		</transition>
+		<transition id="id55">
+			<source ref="id39"/>
+			<target ref="id43"/>
+			<label kind="guard" x="340" y="76">rcvData==0 
+&amp;&amp; isAuthenticated</label>
+			<nail x="390" y="-34"/>
+			<nail x="391" y="127"/>
+		</transition>
+		<transition id="id56">
+			<source ref="id44"/>
+			<target ref="id41"/>
+			<nail x="34" y="187"/>
+			<nail x="34" y="247"/>
+		</transition>
+		<transition id="id57">
+			<source ref="id43"/>
+			<target ref="id41"/>
+			<nail x="323" y="281"/>
+		</transition>
+		<transition id="id58">
+			<source ref="id41"/>
+			<target ref="id38"/>
+			<label kind="assignment" x="-204" y="349">flag=1</label>
+			<nail x="34" y="375"/>
+			<nail x="-314" y="374"/>
+			<nail x="-314" y="102"/>
+			<nail x="-314" y="42"/>
+		</transition>
+		<transition id="id59">
+			<source ref="id39"/>
+			<target ref="id44"/>
+			<label kind="guard" x="-127" y="68">clockTime-rcvTime&lt;DEADLINE &amp;&amp;
+rcvData!=0 &amp;&amp; isAuthenticated 
+&amp;&amp; sndData1==rcvData</label>
+			<nail x="34" y="25"/>
+			<nail x="34" y="85"/>
+		</transition>
+		<transition id="id60">
+			<source ref="id38"/>
+			<target ref="id40"/>
+			<label kind="guard" x="-629" y="-110">clockTime &gt;= TIMELIMIT + DEADLINE</label>
+			<label kind="assignment" x="-518" y="-93">flag=0</label>
+			<nail x="-518" y="-68"/>
+		</transition>
+		<transition id="id61">
+			<source ref="id39"/>
+			<target ref="id43"/>
+			<label kind="guard" x="119" y="-17">clockTime-rcvTime&gt;=DEADLINE 
+&amp;&amp; isAuthenticated &amp;&amp; 
+sndData1==rcvData</label>
+			<nail x="323" y="-34"/>
+			<nail x="323" y="51"/>
+		</transition>
+		<transition id="id62">
+			<source ref="id42"/>
+			<target ref="id38"/>
+			<label kind="synchronisation" x="-510" y="76">Reset!</label>
+			<label kind="assignment" x="-612" y="110">clockTime=0, sndTime=0, flag=1</label>
+			<nail x="-586" y="102"/>
+			<nail x="-408" y="102"/>
+		</transition>
+		<transition id="id63">
+			<source ref="id37"/>
+			<target ref="id38"/>
+			<label kind="synchronisation" x="-365" y="-178">Sync?</label>
+			<label kind="assignment" x="-374" y="-161">flag=1</label>
+		</transition>
+	</template>
+	<system>
+send =Sender();
+sub0 =Sublink(0);
+sub1 =Sublink(1); 
+rec =Receiver();
+
+system send,sub0,sub1,rec;
+    </system>
+	<queries>
+		<query>
+			<formula>A[] not deadlock</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-03-17 00:20:55 +0530">
+			</result>
+		</query>
+		<query>
+			<formula>A[] sub1.Busy imply sub1.subVal != 0</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-03-17 00:20:58 +0530">
+			</result>
+		</query>
+		<query>
+			<formula>A[] sub0.Busy imply sub0.subVal != 0
+</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-03-17 00:21:02 +0530">
+			</result>
+		</query>
+		<query>
+			<formula>A[] (send.ResetWait and sub0.EmptyReset and rec.ResetClock) imply send.Initial</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-03-17 00:21:05 +0530">
+			</result>
+		</query>
+		<query>
+			<formula>A[] (send.ResetWait and sub1.EmptyReset and rec.ResetClock) imply send.Initial</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-03-17 00:21:09 +0530">
+			</result>
+		</query>
+		<query>
+			<formula>A[] (rec.Valid_Packet imply (clockTime - sndTime &lt;= TIMELIMIT + DEADLINE))</formula>
+			<comment>deadline adherence</comment>
+			<result outcome="success" type="quality" timestamp="2025-03-17 00:21:12 +0530">
+			</result>
+		</query>
+		<query>
+			<formula>A[] (!isAuthenticated imply !rec.Valid_Packet)
+
+</formula>
+			<comment>Only the authenticated user can send packets classified as valid.</comment>
+			<result outcome="success" type="quality" timestamp="2025-03-17 00:21:16 +0530">
+			</result>
+		</query>
+		<query>
+			<formula>A[] (sub0.PacketSent imply (S_AuthKey == sub0.subAuthKey &amp;&amp; sub0.subAuthKey == rec.rcvAuthKey))
+</formula>
+			<comment>Correct authkey passed.</comment>
+			<result outcome="success" type="quality" timestamp="2025-03-17 00:21:19 +0530">
+			</result>
+		</query>
+		<query>
+			<formula>A[] (isAuthenticated imply (rec.rcvAuthKey == PSK))
+
+</formula>
+			<comment>authentication successful only if receiver gets the pre shared key</comment>
+			<result outcome="success" type="quality" timestamp="2025-03-17 00:21:23 +0530">
+			</result>
+		</query>
+		<query>
+			<formula>A[] (rec.Valid_Packet imply (sndData1 == rec.rcvData &amp;&amp; isAuthenticated))
+</formula>
+			<comment>Confirms that after decryption, the received data (rcvData) matches the original data (sndData1), ensuring no corruption during transmission, thus preserving data integrity.</comment>
+			<result outcome="success" type="quality" timestamp="2025-03-17 00:21:26 +0530">
+			</result>
+		</query>
+		<query>
+			<formula>A[] (rec.Tampered_Packet imply (sndData1 != rec.rcvData || !isAuthenticated))
+</formula>
+			<comment>This query validates that tampered or unauthenticated packets are correctly identified and handled.</comment>
+			<result outcome="success" type="quality" timestamp="2025-03-17 00:21:30 +0530">
+			</result>
+		</query>
+	</queries>
+</nta>

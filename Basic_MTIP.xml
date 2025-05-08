@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>clock clockTime;
+
+const int TIMELIMIT  = 4;  
+const int DEADLINE = 3; 
+const int num_subs = 2;
+
+//int Total_sublinks=2;
+
+broadcast chan Sync;
+broadcast chan Send_To_Sub[num_subs];
+broadcast chan Send_To_Recv[num_subs];
+broadcast chan Reset;
+broadcast chan EmptyLink;
+
+int sndData=0;    // From Source to Sublink
+int sndTime=0;    // From Source to Sublink
+int sub_Data;     // From Sublink to Destination
+int sub_Time;     // From Sublink to Destination
+
+int full[num_subs]={0,0};
+int sub_use[num_subs]={0,0};           //when sub_use==1 we can use the sublink
+int flag=0;       //If receiver ready or not
+
+
+</declaration>
+	<template>
+		<name x="5" y="5">Sender</name>
+		<declaration>// Iterators and similar
+int sub_index=0;
+
+// Methods
+int Full_subs(){
+    return full[0]!=0 || full[1]!=0;
+}
+</declaration>
+		<location id="id0" x="-595" y="-178">
+			<name x="-612" y="-212">Initial</name>
+		</location>
+		<location id="id1" x="-110" y="-178">
+			<name x="-221" y="-204">ReadyToSend</name>
+		</location>
+		<location id="id2" x="-323" y="42">
+			<name x="-306" y="16">Sending</name>
+			<committed/>
+		</location>
+		<location id="id3" x="153" y="-178">
+			<name x="119" y="-221">ResetWait</name>
+		</location>
+		<location id="id4" x="-102" y="170">
+			<name x="-136" y="136">toSublinks</name>
+			<committed/>
+		</location>
+		<init ref="id0"/>
+		<transition id="id5">
+			<source ref="id2"/>
+			<target ref="id4"/>
+			<label kind="assignment" x="-305" y="170">sndData=1</label>
+			<nail x="-323" y="170"/>
+		</transition>
+		<transition id="id6">
+			<source ref="id4"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-68" y="170">sub_index&lt;num_subs &amp;&amp; 
+sub_use[sub_index]==1</label>
+			<label kind="synchronisation" x="-59" y="212">Send_To_Sub[sub_index]!</label>
+			<label kind="assignment" x="-34" y="229">sub_index++</label>
+			<nail x="-127" y="229"/>
+			<nail x="-77" y="229"/>
+		</transition>
+		<transition id="id7">
+			<source ref="id3"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="178" y="-127">Reset?</label>
+			<nail x="255" y="-178"/>
+			<nail x="255" y="-110"/>
+			<nail x="25" y="-110"/>
+		</transition>
+		<transition id="id8">
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-93" y="-221">clockTime&gt;=TIMELIMIT 
+&amp;&amp; sndTime+1&gt;TIMELIMIT</label>
+			<label kind="comments" x="-144" y="-263">clocktime and sendtime are updated together</label>
+			<nail x="0" y="-178"/>
+			<nail x="34" y="-178"/>
+			<nail x="85" y="-178"/>
+		</transition>
+		<transition id="id9">
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-306" y="-136">!Full_subs() &amp;&amp; 
+clockTime &gt;=sndTime &amp;&amp;
+sndTime+1&lt;=TIMELIMIT</label>
+			<label kind="comments" x="-697" y="-93">Packet sent when the time has
+reached or surpassed its designated
+sndTime(timestamp).Avoid early 
+transmission(periodic transmission
+in MTIP)</label>
+			<nail x="-110" y="-59"/>
+			<nail x="-323" y="-59"/>
+		</transition>
+		<transition id="id10">
+			<source ref="id4"/>
+			<target ref="id1"/>
+			<label kind="guard" x="110" y="-8">sub_index==num_subs</label>
+			<label kind="assignment" x="110" y="17">sub_index=0, sndTime++</label>
+			<nail x="68" y="170"/>
+			<nail x="102" y="170"/>
+			<nail x="102" y="93"/>
+			<nail x="102" y="-59"/>
+			<nail x="-110" y="-59"/>
+		</transition>
+		<transition id="id11">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-450" y="-212">Sync!</label>
+			<label kind="assignment" x="-544" y="-195">clockTime=0, sndTime=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Sublink</name>
+		<parameter>int id</parameter>
+		<declaration>//To record integer value and time of packet from sender.
+int subVal=0;
+int subTime;
+</declaration>
+		<location id="id12" x="-646" y="-161">
+			<name x="-663" y="-195">Initial</name>
+		</location>
+		<location id="id13" x="-221" y="-161">
+			<name x="-280" y="-195">Free</name>
+		</location>
+		<location id="id14" x="153" y="-161">
+			<name x="136" y="-195">Busy</name>
+		</location>
+		<location id="id15" x="144" y="187">
+			<name x="102" y="153">PacketSent</name>
+			<committed/>
+		</location>
+		<location id="id16" x="467" y="-161">
+			<name x="374" y="-204">EmptyReset</name>
+			<committed/>
+		</location>
+		<branchpoint id="id17" x="153" y="85"/>
+		<init ref="id12"/>
+		<transition id="id18">
+			<source ref="id16"/>
+			<target ref="id13"/>
+			<label kind="assignment" x="-144" y="-331">full[id]=0, 
+sub_use[id]=1</label>
+			<nail x="467" y="-340"/>
+			<nail x="-221" y="-340"/>
+		</transition>
+		<transition id="id19">
+			<source ref="id14"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="280" y="-161">EmptyLink?</label>
+			<nail x="195" y="-161"/>
+			<nail x="238" y="-161"/>
+			<nail x="289" y="-161"/>
+			<nail x="374" y="-161"/>
+		</transition>
+		<transition id="id20">
+			<source ref="id17"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="263" y="110">Send_To_Recv[id]!</label>
+			<label kind="assignment" x="263" y="127">sub_Data=0,
+sub_Time=subTime</label>
+			<label kind="comments" x="272" y="59">simulate lost</label>
+			<label kind="probability" x="263" y="93">50</label>
+			<nail x="255" y="85"/>
+			<nail x="255" y="187"/>
+		</transition>
+		<transition id="id21">
+			<source ref="id17"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="-127" y="110">Send_To_Recv[id]!</label>
+			<label kind="assignment" x="-127" y="127">sub_Data=subVal,
+sub_Time=subTime</label>
+			<label kind="probability" x="-127" y="93">50</label>
+			<nail x="51" y="85"/>
+			<nail x="51" y="187"/>
+		</transition>
+		<transition id="id22">
+			<source ref="id14"/>
+			<target ref="id17"/>
+			<label kind="guard" x="153" y="-34">flag==1</label>
+			<label kind="assignment" x="153" y="-8">sub_use[id]=0</label>
+			<label kind="comments" x="-136" y="-34">ready to receive if flag==1</label>
+			<nail x="153" y="25"/>
+		</transition>
+		<transition id="id23">
+			<source ref="id15"/>
+			<target ref="id16"/>
+			<nail x="144" y="255"/>
+			<nail x="467" y="255"/>
+		</transition>
+		<transition id="id24">
+			<source ref="id13"/>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="-136" y="-221">Send_To_Sub[id]?</label>
+			<label kind="assignment" x="-136" y="-204">subVal=sndData,
+subTime=sndTime</label>
+		</transition>
+		<transition id="id25">
+			<source ref="id12"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="-544" y="-187">Sync?</label>
+			<label kind="assignment" x="-603" y="-153">full[id]=subVal, 
+sub_use[id]=1</label>
+		</transition>
+	</template>
+	<template>
+		<name>Receiver</name>
+		<declaration>// Reception variables
+int rcvTime;
+int rcvData;
+</declaration>
+		<location id="id26" x="-314" y="-229">
+			<name x="-331" y="-263">Initial</name>
+		</location>
+		<location id="id27" x="-313" y="-68">
+			<name x="-442" y="-51">ReadyToReceive</name>
+		</location>
+		<location id="id28" x="34" y="-34">
+			<name x="59" y="-59">Received</name>
+			<committed/>
+		</location>
+		<location id="id29" x="-586" y="-68">
+			<name x="-697" y="-76">ResetClock</name>
+			<committed/>
+		</location>
+		<location id="id30" x="34" y="281">
+			<name x="42" y="289">Proceed</name>
+			<committed/>
+		</location>
+		<location id="id31" x="-586" y="51">
+			<name x="-688" y="51">Iterating</name>
+			<committed/>
+		</location>
+		<location id="id32" x="323" y="170">
+			<name x="340" y="161">Late_Loss_Packet</name>
+			<committed/>
+		</location>
+		<location id="id33" x="34" y="162">
+			<name x="51" y="153">Valid_Packet</name>
+			<committed/>
+		</location>
+		<init ref="id26"/>
+		<transition id="id34">
+			<source ref="id27"/>
+			<target ref="id28"/>
+			<label kind="select" x="-229" y="-93">id : int [0,num_subs-1]</label>
+			<label kind="synchronisation" x="-204" y="-110">Send_To_Recv[id]?</label>
+			<label kind="assignment" x="-212" y="-59">rcvTime=sub_Time, 
+rcvData=sub_Data,
+flag=0</label>
+			<nail x="-85" y="-68"/>
+			<nail x="34" y="-68"/>
+		</transition>
+		<transition id="id35">
+			<source ref="id29"/>
+			<target ref="id31"/>
+			<label kind="synchronisation" x="-680" y="-8">EmptyLink!</label>
+			<nail x="-586" y="-17"/>
+		</transition>
+		<transition id="id36">
+			<source ref="id28"/>
+			<target ref="id32"/>
+			<label kind="guard" x="331" y="-59">rcvData==0</label>
+			<nail x="390" y="-34"/>
+			<nail x="391" y="127"/>
+		</transition>
+		<transition id="id37">
+			<source ref="id33"/>
+			<target ref="id30"/>
+			<nail x="34" y="187"/>
+			<nail x="34" y="247"/>
+		</transition>
+		<transition id="id38">
+			<source ref="id32"/>
+			<target ref="id30"/>
+			<nail x="323" y="281"/>
+		</transition>
+		<transition id="id39">
+			<source ref="id30"/>
+			<target ref="id27"/>
+			<label kind="assignment" x="-204" y="349">flag=1</label>
+			<nail x="34" y="375"/>
+			<nail x="-314" y="374"/>
+			<nail x="-314" y="102"/>
+			<nail x="-314" y="42"/>
+		</transition>
+		<transition id="id40">
+			<source ref="id28"/>
+			<target ref="id33"/>
+			<label kind="guard" x="-127" y="68">clockTime-rcvTime&lt;DEADLINE &amp;&amp;
+rcvData==1</label>
+			<nail x="34" y="25"/>
+			<nail x="34" y="85"/>
+		</transition>
+		<transition id="id41">
+			<source ref="id27"/>
+			<target ref="id29"/>
+			<label kind="guard" x="-629" y="-110">clockTime &gt;= TIMELIMIT + DEADLINE</label>
+			<label kind="assignment" x="-518" y="-93">flag=0</label>
+			<nail x="-518" y="-68"/>
+		</transition>
+		<transition id="id42">
+			<source ref="id28"/>
+			<target ref="id32"/>
+			<label kind="guard" x="119" y="-8">clockTime-rcvTime&gt;=DEADLINE</label>
+			<nail x="323" y="-34"/>
+			<nail x="323" y="51"/>
+		</transition>
+		<transition id="id43">
+			<source ref="id31"/>
+			<target ref="id27"/>
+			<label kind="synchronisation" x="-510" y="76">Reset!</label>
+			<label kind="assignment" x="-612" y="110">clockTime=0, sndTime=0, flag=1</label>
+			<nail x="-586" y="102"/>
+			<nail x="-408" y="102"/>
+		</transition>
+		<transition id="id44">
+			<source ref="id26"/>
+			<target ref="id27"/>
+			<label kind="synchronisation" x="-289" y="-161">Sync?</label>
+			<label kind="assignment" x="-297" y="-144">flag=1</label>
+		</transition>
+	</template>
+	<system>
+send =Sender();
+sub0 =Sublink(0);
+sub1 =Sublink(1); 
+rec =Receiver();
+
+system send,sub0,sub1,rec;
+    </system>
+	<queries>
+		<query>
+			<formula>A[] not deadlock</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-02-04 14:18:17 +0530">
+			</result>
+		</query>
+		<query>
+			<formula>A[] sub1.Busy imply sub1.subVal != 0</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-02-04 14:18:19 +0530">
+			</result>
+		</query>
+		<query>
+			<formula>A[] sub0.Busy imply sub0.subVal != 0
+</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-02-04 14:18:20 +0530">
+			</result>
+		</query>
+		<query>
+			<formula>A[] (send.ResetWait and sub0.EmptyReset and rec.ResetClock) imply send.Initial</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-02-04 14:18:22 +0530">
+			</result>
+		</query>
+		<query>
+			<formula>A[] (send.ResetWait and sub1.EmptyReset and rec.ResetClock) imply send.Initial</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-02-04 14:18:23 +0530">
+			</result>
+		</query>
+	</queries>
+</nta>
