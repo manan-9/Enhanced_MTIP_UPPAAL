@@ -4,9 +4,9 @@ This repository contains UPPAAL models, simulation results, and verification pro
 
 ## Repository Structure
 
-- `basic_mtip.xml` - Original MTIP model (no security or sleep modes)
-- `enhanced_mtip_security.xml` - MTIP with mutual authentication and encryption
-- `sleepy_secure_mtip.xml` - MTIP with authentication, encryption, and adaptive sleep modes
+- `Basic_MTIP.xml` - Original MTIP model (no security or sleep modes)
+- `Enhanced_MTIP_Secure.xml` - MTIP with mutual authentication and encryption
+- `Enhanced_MTIP_Sleepy_and_Secure.xml` - MTIP with authentication, encryption, and adaptive sleep modes
 - `efficiency_proofs/` - Screenshots and data from UPPAAL concrete simulator runs demonstrating energy savings
 - `images/` - Automaton diagrams for each MTIP phase and component
 
@@ -45,13 +45,13 @@ This repository contains UPPAAL models, simulation results, and verification pro
 ## 3. Sleepy & Secure Enhanced MTIP
 
 **Sender Automaton:**  
-![Sender with Sleep](images/sender_sleep.jpg)
+![Sender with Sleep](images/sender_sleep.png)
 
 **Sublink Automaton:**  
-![Sublink with Sleep](images/sublink_sleep.jpg)
+![Sublink with Sleep](images/sublink_sleep.png)
 
 **Receiver Automaton:**  
-![Receiver with Sleep](images/receiver_sleep.jpg)
+![Receiver with Sleep](images/receiver_sleep.png)
 
 *Incorporates adaptive sleep modes in sender, sublink, and receiver. Achieves up to 65% energy savings in simulation while maintaining all security and timing guarantees.*
 
